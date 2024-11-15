@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play Chess</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1>Play Chess</h1>
+        
+        <!-- Start Game Form -->
+        <form id="gameForm">
+            <div class="form-group">
+                <label for="opponent_id">Choose Opponent:</label>
+                <select class="form-control" name="opponent_id" id="opponent_id" required>
+                    <!-- Opponents will be populated here -->
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Start Game</button>
+        </form>
+
+        <h2 class="mt-5">Your Game History</h2>
+        
+        <!-- Game History Table -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>White Player</th>
+                    <th>Black Player</th>
+                    <th>Result</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody id="gameHistory">
+                <!-- Game history will be populated here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Fetch the game history for the logged-in user
+        async function fetchGameHistory() {
+            const token = localStorage.getItem('access_token');  // Retrieve JWT token
+
+            try {
+                const response = await axios.get('http://127.0.0.1:8000/game/get_game_history/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`  // Add token to the Authorization header
+                    }
+                });
+
+                // Populate the game history table
+                const gameHistoryTable = document.getElementById('gameHistory');
+                if (response.data.length === 0) {
+                    gameHistoryTable.innerHTML = '<tr><td colspan="4" class="text-center">No games played yet.</td></tr>';
+                } else {
+                    response.data.forEach(game => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${game.white_player.username}</td>
+                            <td>${game.black_player.username}</td>
+                            <td>${game.result}</td>
+                            <td>${new Date(game.created_at).toLocaleString()}</td>
+                        `;
+                        gameHistoryTable.appendChild(row);
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching game history:', error);
+                alert('Failed to load game history. Please try again.');
+            }
+        }
+
+        // Fetch the list of opponents
+        async function fetchOpponents() {
+            const token = localStorage.getItem('access_token');  // Retrieve JWT token
+
+            try {
+                const response = await axios.get('http://127.0.0.1:8000/game/get_opponents/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`  // Add token to the Authorization header
+                    }
+                });
+
+                // Populate the opponent dropdown
+                const opponentSelect = document.getElementById('opponent_id');
+                response.data.forEach(opponent => {
+                    const option = document.createElement('option');
+                    option.value = opponent.id;
+                    option.textContent = opponent.username;
+                    opponentSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error fetching opponents:', error);
+                alert('Failed to load opponents. Please try again.');
+            }
+        }
+
+        // Handle form submission to start a new game
+        document.getElementById('gameForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const opponentId = document.getElementById('opponent_id').value;
+            const token = localStorage.getItem('access_token');  // Retrieve JWT token
+
+            try {
+                // Make API call to start a new game
+                const response = await axios.post('http://127.0.0.1:8000/game/play/', {
+                    opponent_id: opponentId
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`  // Send JWT token in the header
+                    }
+                });
+
+                // Redirect to the game details page after starting the game
+                window.location.href = `/game/${response.data.id}/`;  // Adjust the URL based on your routing
+
+            } catch (error) {
+                console.error('Error starting the game:', error);
+                alert('Failed to start the game. Please try again.');
+            }
+        });
+
+        // Call these functions on page load
+        fetchGameHistory();  // Fetch the logged-in user's game history
+        fetchOpponents();    // Fetch the list of available opponents
+    </script>
+</body>
+
+</html>
